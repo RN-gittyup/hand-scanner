@@ -1,7 +1,7 @@
 {
   "name": "Germ Scanner",
   "short_name": "Scanner",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",

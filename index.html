@@ -2,17 +2,19 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sci-Fi Hand Scanner</title>
+<title>Bio Lab Hand Scanner</title>
 <link rel="manifest" href="manifest.json">
+
 <style>
 body {
     margin:0;
-    font-family: Arial, sans-serif;
+    font-family: monospace;
     background:black;
-    color:white;
+    color:#00ffcc;
     text-align:center;
     overflow:hidden;
 }
+
 video {
     position:fixed;
     top:0;
@@ -20,30 +22,61 @@ video {
     width:100%;
     height:100%;
     object-fit:cover;
-    z-index:-1;
+    z-index:-2;
 }
+
+/* HUD Overlay */
+#hud {
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    border:4px solid #00ffcc;
+    box-sizing:border-box;
+    pointer-events:none;
+}
+
 #scannerLine {
     position:absolute;
     width:100%;
     height:4px;
-    background:lime;
+    background:#00ffcc;
     top:0;
     animation:scan 2s infinite;
 }
+
 @keyframes scan {
     0% { top:0%; }
     50% { top:90%; }
     100% { top:0%; }
 }
+
 button {
-    padding:15px 25px;
-    font-size:18px;
+    padding:15px 30px;
+    font-size:20px;
     margin:10px;
     border:none;
-    border-radius:10px;
-    cursor:pointer;
+    border-radius:8px;
+    background:#00ffcc;
+    color:black;
 }
-#scanBtn { background:#00ffcc; color:black; }
+
+#scanBtn {
+    position:fixed;
+    bottom:40px;
+    left:50%;
+    transform:translateX(-50%);
+}
+
+#status {
+    position:fixed;
+    top:20px;
+    left:50%;
+    transform:translateX(-50%);
+    font-size:22px;
+}
+
 #result {
     position:fixed;
     top:0;
@@ -53,98 +86,137 @@ button {
     display:none;
     justify-content:center;
     align-items:center;
+    flex-direction:column;
     font-size:32px;
     font-weight:bold;
-    flex-direction:column;
+    text-align:center;
 }
-#parentControlToggle {
-    position:fixed;
-    top:10px;
-    right:10px;
-    background:orange;
-    color:black;
-    padding:10px 15px;
-    border-radius:8px;
-    display:none;
+
+.confetti {
+    position:absolute;
+    width:8px;
+    height:8px;
+    background:white;
+    animation:fall 2s linear forwards;
+}
+
+@keyframes fall {
+    to { transform:translateY(800px) rotate(360deg); opacity:0; }
 }
 </style>
 </head>
+
 <body>
 
 <video id="camera" autoplay playsinline></video>
+<div id="hud"></div>
 <div id="scannerLine"></div>
 
-<button id="scanBtn">Scan Hands</button>
+<div id="status">BIO-SCAN READY</div>
+<button id="scanBtn">INITIATE SCAN</button>
 <div id="result"></div>
-<button id="parentControlToggle">Parent Control</button>
 
 <script>
 // Messages
 const cleanComments = [
-"✨ SUPER CLEAN HANDS!",
-"🦸 Germs ELIMINATED!",
-"🌟 5-Star Handwashing!",
-"🧼 Soap Champion!",
-"High five! Hands sparkle!"
+"GERMS ELIMINATED",
+"BIO-PURITY CONFIRMED",
+"HANDS CERTIFIED CLEAN",
+"MISSION SUCCESS",
+"SANITIZATION COMPLETE"
 ];
+
 const dirtyComments = [
-"🚨 YUCK! Germs detected!",
-"🦠 Contamination alert!",
-"Back to the sink, buddy!",
-"Uh oh… soap missed a spot!",
-"Try again! Keep scrubbing!"
+"CONTAMINATION DETECTED",
+"GERM LEVELS CRITICAL",
+"SANITIZATION FAILURE",
+"BIOHAZARD ALERT",
+"RETURN TO WASH STATION"
 ];
 
-// Elements
-const resultDiv = document.getElementById("result");
-const scanBtn = document.getElementById("scanBtn");
-const parentToggle = document.getElementById("parentControlToggle");
+let parentMode = false;
 
-// State
-let parentControl = false;
-
-// Camera setup
+// Camera
 navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
 .then(stream => { document.getElementById("camera").srcObject = stream; });
 
-// Scan function
-function scan() {
-    let isClean;
+const status = document.getElementById("status");
+const resultDiv = document.getElementById("result");
 
-    if(parentControl) {
-        // Prompt parent to choose
-        const choice = confirm("Parent: Click OK if hands are CLEAN, Cancel if DIRTY.");
-        isClean = choice;
-    } else {
-        // Random
-        isClean = Math.random() > 0.5;
-    }
-
-    // Pick message
-    let message = isClean ?
-        cleanComments[Math.floor(Math.random()*cleanComments.length)] :
-        dirtyComments[Math.floor(Math.random()*dirtyComments.length)];
-
-    // Set result color
-    resultDiv.style.background = isClean ? "rgba(0,150,0,0.9)" : "rgba(150,0,0,0.9)";
-    resultDiv.innerHTML = message + "<br><br><button onclick='closeResult()'>Scan Again</button>";
-    resultDiv.style.display = "flex";
+function playBeep() {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.2);
 }
 
-function closeResult() { resultDiv.style.display = "none"; }
+function confettiExplosion() {
+    for(let i=0;i<50;i++){
+        const piece = document.createElement("div");
+        piece.className="confetti";
+        piece.style.left = Math.random()*window.innerWidth + "px";
+        piece.style.background = ["#00ffcc","#ffffff","#00ff00"][Math.floor(Math.random()*3)];
+        document.body.appendChild(piece);
+        setTimeout(()=>piece.remove(),2000);
+    }
+}
 
-// Scan button
-scanBtn.addEventListener("click", scan);
+function scan() {
+    status.innerText = "ANALYZING...";
+    playBeep();
 
-// Parent toggle (hidden until Pro unlock)
-parentToggle.addEventListener("click", () => {
-    parentControl = !parentControl;
-    alert("Parent control " + (parentControl ? "enabled" : "disabled"));
+    setTimeout(()=>{
+
+        let isClean;
+
+        if(parentMode){
+            isClean = confirm("Parent: OK = CLEAN, Cancel = DIRTY");
+        } else {
+            isClean = Math.random() > 0.5;
+        }
+
+        const purity = Math.floor(Math.random()*40) + (isClean ? 60 : 20);
+
+        const message = isClean ?
+            cleanComments[Math.floor(Math.random()*cleanComments.length)] :
+            dirtyComments[Math.floor(Math.random()*dirtyComments.length)];
+
+        resultDiv.style.background = isClean ? "rgba(0,150,0,0.95)" : "rgba(150,0,0,0.95)";
+        resultDiv.innerHTML = `
+            ${message}<br><br>
+            BIO PURITY: ${purity}%<br><br>
+            <button onclick="closeResult()">SCAN AGAIN</button>
+        `;
+        resultDiv.style.display="flex";
+
+        if(isClean) confettiExplosion();
+
+        status.innerText = "BIO-SCAN READY";
+
+    }, 1500);
+}
+
+function closeResult(){
+    resultDiv.style.display="none";
+}
+
+document.getElementById("scanBtn").addEventListener("click", scan);
+
+// Secret Parent Mode (hold top-left corner 3 seconds)
+let holdTimer;
+document.body.addEventListener("touchstart", e=>{
+    if(e.touches[0].clientX < 50 && e.touches[0].clientY < 50){
+        holdTimer = setTimeout(()=>{
+            parentMode = !parentMode;
+            alert("Parent Mode " + (parentMode ? "Enabled" : "Disabled"));
+        },3000);
+    }
 });
+document.body.addEventListener("touchend", ()=>clearTimeout(holdTimer));
 
-// Demo: show parent control if Pro unlocked
-let isPro = false; // change to true if you implement payment
-if(isPro) parentToggle.style.display = "block";
 </script>
 
 </body>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sci-Fi Hand Scanner</title>
+<style>
+body {
+    margin:0;
+    font-family: Arial, sans-serif;
+    background:black;
+    color:white;
+    text-align:center;
+    overflow:hidden;
+}
+video {
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    z-index:-1;
+}
+#scannerLine {
+    position:absolute;
+    width:100%;
+    height:4px;
+    background:lime;
+    top:0;
+    animation:scan 2s infinite;
+}
+@keyframes scan {
+    0% { top:0%; }
+    50% { top:90%; }
+    100% { top:0%; }
+}
+button {
+    padding:15px 25px;
+    font-size:18px;
+    margin:10px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+}
+#scanBtn { background:#00ffcc; color:black; }
+#result {
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    display:none;
+    justify-content:center;
+    align-items:center;
+    font-size:32px;
+    font-weight:bold;
+    flex-direction:column;
+}
+#parentControlToggle {
+    position:fixed;
+    top:10px;
+    right:10px;
+    background:orange;
+    color:black;
+    padding:10px 15px;
+    border-radius:8px;
+    display:none;
+}
+</style>
+</head>
+<body>
+
+<video id="camera" autoplay playsinline></video>
+<div id="scannerLine"></div>
+
+<button id="scanBtn">Scan Hands</button>
+<div id="result"></div>
+<button id="parentControlToggle">Parent Control</button>
+
+<script>
+// Messages
+const cleanComments = [
+"✨ SUPER CLEAN HANDS!",
+"🦸 Germs ELIMINATED!",
+"🌟 5-Star Handwashing!",
+"🧼 Soap Champion!",
+"High five! Hands sparkle!"
+];
+const dirtyComments = [
+"🚨 YUCK! Germs detected!",
+"🦠 Contamination alert!",
+"Back to the sink, buddy!",
+"Uh oh… soap missed a spot!",
+"Try again! Keep scrubbing!"
+];
+
+// Elements
+const resultDiv = document.getElementById("result");
+const scanBtn = document.getElementById("scanBtn");
+const parentToggle = document.getElementById("parentControlToggle");
+
+// State
+let parentControl = false;
+
+// Camera setup
+navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+.then(stream => { document.getElementById("camera").srcObject = stream; });
+
+// Scan function
+function scan() {
+    let isClean;
+
+    if(parentControl) {
+        // Prompt parent to choose
+        const choice = confirm("Parent: Click OK if hands are CLEAN, Cancel if DIRTY.");
+        isClean = choice;
+    } else {
+        // Random
+        isClean = Math.random() > 0.5;
+    }
+
+    // Pick message
+    let message = isClean ?
+        cleanComments[Math.floor(Math.random()*cleanComments.length)] :
+        dirtyComments[Math.floor(Math.random()*dirtyComments.length)];
+
+    // Set result color
+    resultDiv.style.background = isClean ? "rgba(0,150,0,0.9)" : "rgba(150,0,0,0.9)";
+    resultDiv.innerHTML = message + "<br><br><button onclick='closeResult()'>Scan Again</button>";
+    resultDiv.style.display = "flex";
+}
+
+function closeResult() { resultDiv.style.display = "none"; }
+
+// Scan button
+scanBtn.addEventListener("click", scan);
+
+// Parent toggle (hidden until Pro unlock)
+parentToggle.addEventListener("click", () => {
+    parentControl = !parentControl;
+    alert("Parent control " + (parentControl ? "enabled" : "disabled"));
+});
+
+// Demo: show parent control if Pro unlocked
+let isPro = false; // change to true if you implement payment
+if(isPro) parentToggle.style.display = "block";
+</script>
+
+</body>
+</html>
